@@ -42,3 +42,14 @@ def exportar(ruta, destino, mes=None, hoy=None) -> int:
     sel = domain.filtrar_mes(storage.cargar(ruta), a, m)
     exportar_csv(Path(destino), sel)
     return len(sel)
+
+
+def categorias(ruta, mes=None, hoy=None):
+    """Devuelve (lista ordenada, total, (año, mes)); solo lectura."""
+    a, m = _mes(mes, hoy)
+    sel = domain.filtrar_mes(storage.cargar(ruta), a, m)
+    t: dict[str, Decimal] = {}
+    for g in sel:
+        c = g.categoria.strip().lower()
+        t[c] = t.get(c, Decimal("0.00")) + g.monto
+    return domain.ordenar_categorias(t), sum(t.values(), Decimal("0.00")), (a, m)

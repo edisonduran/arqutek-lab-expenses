@@ -10,6 +10,7 @@ Herramienta de línea de comandos en Python 3.11, solo biblioteca estándar. Per
 - El JSON guarda el monto como cadena (p. ej. "12.50") para evitar errores de coma flotante.
 - Resumen/exportación sin gastos en el mes: éxito, total 0.00, CSV solo con cabecera.
 - CSV: cabecera `fecha,categoria,monto,nota`, codificación UTF-8, ordenado por fecha.
+- `categorias`: formato de línea `categoria: 0.00` y `total: 0.00` (igual que `resumen`); orden por total descendente, empate por nombre ascendente; mes vacío imprime `No hay gastos en AAAA-MM` en stdout con código 0 (a diferencia de `resumen`, que imprime total 0.00).
 
 ## Historias
 
@@ -56,6 +57,30 @@ Como equipo quiero pruebas pytest de cada comando y de los errores para evitar r
 - Given la suite, When ejecuto `pytest`, Then pasa sin red y usa directorios temporales, sin tocar el gastos.json real.
 - Given la suite, When se revisa, Then hay pruebas de éxito para registrar, resumen y exportar.
 - Given la suite, When se revisa, Then hay pruebas de monto negativo/cero/no numérico, fecha y mes inválidos, JSON corrupto sin sobrescribir, y comprobación del código de salida 1.
+
+### US-08 Listar categorías del mes por total (must, 3 pts)
+Como persona que controla sus finanzas quiero `gastos categorias [--mes AAAA-MM]` para ver qué categorías pesan más en el mes y decidir dónde recortar.
+- Given gastos en 2026-11 de comida 10.00 y 5.50, transporte 3.00 y ocio 20.00, When ejecuto `gastos categorias` (mes actual 2026-11), Then imprime en este orden `ocio: 20.00`, `comida: 15.50`, `transporte: 3.00`, y al final `total: 38.50`, con código 0.
+- Given gastos en octubre y noviembre, When ejecuto `gastos categorias --mes 2026-10`, Then solo se suman y listan los gastos de octubre.
+- Given dos categorías con el mismo total, When ejecuto el comando, Then se ordenan alfabéticamente entre sí (orden determinista).
+- Given categorías registradas como "Comida" y "COMIDA", When ejecuto el comando, Then aparecen en una sola línea `comida`.
+
+### US-09 Mes sin gastos y errores en `categorias` (must, 2 pts)
+Como usuario quiero que `categorias` avise claramente cuando no hay datos o la entrada es inválida, con el mismo estilo que `resumen` y `exportar`, para no confundir un mes vacío con un fallo.
+- Given un mes sin gastos (o sin gastos.json), When ejecuto `gastos categorias --mes 2026-09`, Then se imprime en stdout el mensaje `No hay gastos en 2026-09`, sin líneas de categorías, y el código de salida es 0.
+- Given `--mes 2026-13` o `--mes abc`, When ejecuto `gastos categorias`, Then se muestra el mismo mensaje de mes inválido que `resumen` en stderr y el código es 1.
+- Given un argumento desconocido (`gastos categorias --foo`), When ejecuto, Then error de uso en stderr y código 1.
+
+### US-10 `categorias` es de solo lectura y robusto (must, 2 pts)
+Como usuario quiero que `categorias` nunca cambie ni cree mis datos y respete archivos dañados, para no perder información.
+- Given que gastos.json no existe, When ejecuto `gastos categorias`, Then termina con código 0 y gastos.json sigue sin existir.
+- Given un gastos.json válido, When ejecuto `gastos categorias`, Then el archivo queda byte a byte idéntico.
+- Given un gastos.json con JSON corrupto, When ejecuto `gastos categorias`, Then se informa el error en stderr, código 1 y el archivo queda byte a byte intacto.
+
+### US-11 Documentar `categorias` y probarlo (should, 2 pts)
+Como usuario y como equipo quiero README actualizado y pruebas pytest del comando para descubrirlo y evitar regresiones.
+- Given el README, When se revisa, Then la sección Uso incluye `gastos categorias` y `gastos categorias --mes 2026-10`, y la lista de garantías menciona `categorias` junto a `resumen` y `exportar`.
+- Given la suite, When ejecuto `pytest`, Then hay pruebas de orden descendente, total, mes vacío, mes inválido, sin crear archivo, sin modificar datos y JSON corrupto, y las pruebas existentes siguen pasando sin modificarse.
 
 ## No funcionales
 - Python 3.11, solo biblioteca estándar (pytest solo para pruebas).
