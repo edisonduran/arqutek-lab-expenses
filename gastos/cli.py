@@ -26,6 +26,9 @@ def build_parser() -> argparse.ArgumentParser:
     e = sub.add_parser("exportar", help="exportar a CSV")
     e.add_argument("archivo")
     e.add_argument("--mes")
+    li = sub.add_parser("listar", help="listar gastos de un mes")
+    li.add_argument("--mes")
+    li.add_argument("--categoria")
     return p
 
 
@@ -41,6 +44,15 @@ def main(argv=None) -> int:
             for c in sorted(tot):
                 print(f"{c}: {tot[c]:.2f}")
             print(f"total: {total:.2f}")
+        elif args.cmd == "listar":
+            sel, total = service.listar(ruta, args.mes, args.categoria)
+            if not sel:
+                print("No hay gastos para mostrar")
+            else:
+                for g in sel:
+                    print(f"{g.fecha.isoformat()} {g.categoria} {g.monto:.2f} {g.nota}".rstrip())
+                print(f"gastos: {len(sel)}")
+                print(f"total: {total:.2f}")
         else:
             n = service.exportar(ruta, args.archivo, args.mes)
             print(f"Exportados {n} gastos a {args.archivo}")

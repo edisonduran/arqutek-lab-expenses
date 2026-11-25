@@ -1,4 +1,4 @@
-"""Casos de uso: registrar, resumen, exportar."""
+"""Casos de uso: registrar, resumen, exportar, listar."""
 from __future__ import annotations
 
 from datetime import date
@@ -42,3 +42,14 @@ def exportar(ruta, destino, mes=None, hoy=None) -> int:
     sel = domain.filtrar_mes(storage.cargar(ruta), a, m)
     exportar_csv(Path(destino), sel)
     return len(sel)
+
+
+def listar(ruta, mes=None, categoria=None, hoy=None) -> tuple[list[domain.Gasto], Decimal]:
+    a, m = _mes(mes, hoy)
+    if categoria is not None:
+        domain.normalizar_categoria(categoria)
+    sel = domain.filtrar_mes(storage.cargar(ruta), a, m)
+    if categoria is not None:
+        sel = domain.filtrar_categoria(sel, categoria)
+    sel = domain.ordenar_por_fecha(sel)
+    return sel, sum((g.monto for g in sel), Decimal("0.00"))

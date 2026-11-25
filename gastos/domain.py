@@ -68,6 +68,15 @@ def filtrar_mes(gastos, anio: int, mes: int) -> list[Gasto]:
     return [g for g in gastos if g.fecha.year == anio and g.fecha.month == mes]
 
 
+def filtrar_categoria(gastos, categoria: str) -> list[Gasto]:
+    c = normalizar_categoria(categoria)
+    return [g for g in gastos if g.categoria.strip().lower() == c]
+
+
+def ordenar_por_fecha(gastos) -> list[Gasto]:
+    return sorted(gastos, key=lambda g: g.fecha)
+
+
 def totales_por_categoria(gastos) -> dict[str, Decimal]:
     t: dict[str, Decimal] = {}
     for g in gastos:

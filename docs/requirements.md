@@ -57,6 +57,36 @@ Como equipo quiero pruebas pytest de cada comando y de los errores para evitar r
 - Given la suite, When se revisa, Then hay pruebas de éxito para registrar, resumen y exportar.
 - Given la suite, When se revisa, Then hay pruebas de monto negativo/cero/no numérico, fecha y mes inválidos, JSON corrupto sin sobrescribir, y comprobación del código de salida 1.
 
+### US-08 Listar los gastos de un mes (must, 3 pts)
+Como persona que controla sus finanzas quiero `gastos listar [--mes AAAA-MM]` para ver cada gasto del mes, uno por línea y en orden de fecha, y así revisar en qué gasté sin abrir el JSON ni exportar un CSV.
+- Given gastos de 2026-11 con fechas 2026-11-20, 2026-11-03 y 2026-11-10 y de 2026-10, When ejecuto `gastos listar` (mes actual 2026-11), Then muestra solo los tres de noviembre, uno por línea, ordenados por fecha ascendente, cada línea con fecha (AAAA-MM-DD), categoría, monto con dos decimales y descripción (la nota), y código 0.
+- Given dos gastos con la misma fecha, When listo, Then aparecen en el orden en que se registraron.
+- Given los gastos mostrados, When termina el listado, Then la última línea indica cuántos gastos se muestran y su total con dos decimales (p. ej. `gastos: 3` y `total: 18.50`, en el estilo de `resumen`).
+- Given `--mes 2026-10`, When listo, Then solo aparecen los gastos de octubre.
+- Given `--mes 2026-13` o `--mes abc`, When listo, Then mensaje claro en stderr (igual que `resumen`) y código 1.
+- Given un gasto sin nota, When listo, Then su línea se muestra sin romperse (descripción vacía).
+
+### US-09 Filtrar el listado por categoría (should, 2 pts)
+Como usuario quiero `gastos listar --categoria NOMBRE` para ver solo los gastos de una categoría y comprobar cuánto llevo en ella.
+- Given gastos de "comida" y "transporte" en el mes, When ejecuto `gastos listar --categoria COMIDA`, Then solo se listan los de comida (sin distinguir mayúsculas, igual que al registrar), y el pie cuenta y suma solo esos.
+- Given `--categoria Comida --mes 2026-10`, When listo, Then se aplican ambos filtros a la vez.
+- Given una categoría sin gastos en el mes, When listo, Then se aplica el mensaje de "sin gastos" de US-10 y código 0.
+- Given `--categoria ""` o solo espacios, When listo, Then mensaje de categoría inválida igual que al registrar y código 1.
+
+### US-10 Listado sin gastos, de solo lectura y robusto (must, 2 pts)
+Como usuario quiero que `listar` se comporte como `resumen` y `exportar` ante datos ausentes o dañados, para no perder ni alterar mis datos.
+- Given un mes sin gastos (o un gastos.json inexistente), When ejecuto `gastos listar`, Then imprime el mensaje `No hay gastos para mostrar`, no imprime el pie de totales y el código es 0.
+- Given que gastos.json no existe, When ejecuto `listar`, Then no se crea el archivo.
+- Given un gastos.json con gastos, When ejecuto `listar` con cualquier opción, Then el archivo queda byte a byte intacto.
+- Given un gastos.json con JSON corrupto, When ejecuto `listar`, Then mensaje de error en stderr, código 1 y el archivo queda intacto.
+- Given una opción desconocida (`--foo`), When ejecuto `listar`, Then "Error de uso: ..." en stderr y código 1.
+
+### US-11 Documentar y probar `listar` (must, 2 pts)
+Como usuario y como equipo quiero README actualizado y pruebas de `listar` para descubrir el comando y evitar regresiones.
+- Given el README, When se revisa, Then la sección Uso incluye `gastos listar`, `gastos listar --mes 2026-10` y `--categoria`, y menciona que `listar` no crea `gastos.json` ni lo modifica.
+- Given la suite pytest, When se ejecuta, Then hay pruebas de listar: orden por fecha, filtro de mes y categoría, pie con cuenta y total, mes sin gastos, mes inválido, JSON corrupto intacto y archivo inexistente sin crear.
+- Given las pruebas existentes, When se ejecuta toda la suite, Then siguen pasando sin modificarse.
+
 ## No funcionales
 - Python 3.11, solo biblioteca estándar (pytest solo para pruebas).
 - Decimal para dinero; nunca float.
@@ -65,4 +95,5 @@ Como equipo quiero pruebas pytest de cada comando y de los errores para evitar r
 - Ejecución en menos de 1 s con hasta 10 000 gastos.
 
 ## Fuera de alcance
+- Para `listar`: paginación, otros órdenes, rangos de fechas, formato CSV/JSON de salida, colores.
 - Editar o borrar gastos, múltiples monedas, sincronización, interfaz gráfica, presupuestos, importar CSV, cifrado.
