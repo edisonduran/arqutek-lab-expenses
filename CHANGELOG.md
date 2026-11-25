@@ -10,6 +10,7 @@
 - US-05 Resumen mensual (`gastos resumen [--mes AAAA-MM]`).
 - US-06 Exportación a CSV (`gastos exportar <archivo.csv> [--mes AAAA-MM]`).
 - US-07 Suite de pruebas pytest aislada con directorios temporales.
+- US-08 Listado de gastos (`gastos listar [--mes AAAA-MM] [--categoria NOMBRE]`): orden estable por fecha, pie con cantidad y total, solo lectura.
 
 ### Decisiones
 - ADR-001: formato `{"version":1,"gastos":[...]}`.
