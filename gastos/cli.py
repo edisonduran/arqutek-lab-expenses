@@ -31,6 +31,8 @@ def build_parser() -> argparse.ArgumentParser:
     e = sub.add_parser("exportar", help="exportar a CSV")
     e.add_argument("archivo")
     e.add_argument("--mes")
+    i = sub.add_parser("importar", help="importar gastos desde CSV")
+    i.add_argument("archivo")
     return p
 
 
@@ -62,6 +64,9 @@ def main(argv=None) -> int:
                 for g in gs:
                     print(f"{g.fecha.isoformat()} {g.categoria} {g.monto:.2f} {g.nota}".rstrip())
                 print(f"{len(gs)} gastos, total: {total:.2f}")
+        elif args.cmd == "importar":
+            n, total = service.importar(ruta, args.archivo)
+            print(f"Importados {n} gastos, total: {total:.2f}")
         else:
             n = service.exportar(ruta, args.archivo, args.mes)
             print(f"Exportados {n} gastos a {args.archivo}")

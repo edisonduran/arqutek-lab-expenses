@@ -39,6 +39,11 @@ def parse_monto(texto: str) -> Decimal:
     return q
 
 
+def parse_monto_exacto(texto: str) -> Decimal:
+    """Monto sin redondear (tras validar con `parse_monto`)."""
+    return Decimal(str(texto).strip())
+
+
 def parse_fecha(texto: str) -> date:
     s = str(texto).strip()
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", s):

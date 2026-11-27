@@ -24,12 +24,15 @@ gastos listar                                         # gastos del mes por fecha
 gastos listar --mes 2026-10
 gastos listar --categoria comida
 gastos exportar salida.csv --mes 2026-10              # CSV: fecha,categoria,monto,nota
+gastos importar archivo.csv                           # agrega los gastos del CSV
 ```
 
 - Montos con Decimal y dos decimales (ROUND_HALF_UP); deben ser > 0.
 - Las categorías se guardan en minúsculas.
 - Errores: mensaje en stderr y código de salida 1; éxito: 0.
 - `resumen`, `categorias`, `listar` y `exportar` no crean `gastos.json` si no existe.
+- `importar` es todo o nada: una fila inválida cancela la importación (error con número de fila) y `gastos.json` no cambia; el CSV de entrada nunca se modifica. Usa las mismas reglas y `GASTOS_FILE` que `registrar`.
+- Importar el mismo CSV dos veces duplica los gastos (no hay detección de duplicados).
 - Un `gastos.json` corrupto o vacío nunca se sobrescribe.
 
 ## Datos

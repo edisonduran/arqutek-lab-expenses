@@ -7,6 +7,7 @@ from pathlib import Path
 
 from gastos import domain, storage
 from gastos.exporter import exportar_csv
+from gastos.importer import leer_csv
 
 
 def _mes(mes, hoy):
@@ -63,3 +64,14 @@ def listar(ruta, mes=None, categoria=None, hoy=None):
         sel = domain.filtrar_categoria(sel, categoria)
     sel = domain.ordenar_por_fecha(sel)
     return sel, sum((g.monto for g in sel), Decimal("0.00")), (a, m)
+
+
+def importar(ruta, origen) -> tuple[int, Decimal]:
+    """Importa un CSV todo o nada; devuelve (cantidad, total)."""
+    nuevos = leer_csv(Path(origen))
+    total = sum((g.monto for g in nuevos), Decimal("0.00"))
+    if nuevos:
+        gastos = storage.cargar(ruta)
+        gastos.extend(nuevos)
+        storage.guardar(ruta, gastos)
+    return len(nuevos), total

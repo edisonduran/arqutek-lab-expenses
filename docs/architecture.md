@@ -10,10 +10,11 @@
 | `gastos/service.py` | Casos de uso: registrar, resumen, exportar, categorias, listar |
 | `gastos/storage.py` | Lectura/escritura atómica de gastos.json |
 | `gastos/exporter.py` | Escritura CSV |
+| `gastos/importer.py` | Lectura y validación de CSV (todo o nada) |
 | `gastos/cli.py`, `__main__.py` | Interfaz argparse, stderr, códigos de salida |
 | `tests/` | pytest con tmp_path |
 
-Dependencias: cli → service → (domain, storage, exporter); domain no depende de nada.
+Dependencias: cli → service → (domain, storage, exporter, importer); domain no depende de nada.
 
 ## ADRs
 1. **Decimal serializado como string** ("12.50") en JSON: exactitud, sin float. Cuantización `ROUND_HALF_UP` a 0.01 (10.005 → 10.01).
@@ -39,7 +40,16 @@ Dependencias: cli → service → (domain, storage, exporter); domain no depende
     - Errores (mes inválido con el mismo mensaje de `resumen`, JSON corrupto, uso/`--foo`) por `GastoError` → stderr, código 1. Archivo ausente: no se crea.
     - Docs: README (Uso y garantías) y CHANGELOG en `[Sin publicar]`, sin tocar 0.1.0.
 
+12. **Comando `importar ARCHIVO.csv`** (US-17..22): todo o nada; nuevo módulo `gastos/importer.py`.
+    - `importer.leer_csv(origen: Path) -> list[Gasto]`: abre en modo lectura (`encoding="utf-8"`, `newline=""`), nunca escribe el CSV. Cabecera exacta `fecha,categoria,monto,nota` (vacío o distinta => `GastoError`). Cada fila: 4 columnas exactas; valida con `domain.parse_fecha`, `normalizar_categoria`, `parse_monto` (mismas reglas que `registrar`). Primer error => `GastoError("Fila N: motivo")`, N desde 1 sin contar cabecera (usar contador propio, no `line_num`, por notas multilínea). Inexistente, directorio, sin permiso, no UTF-8 (`UnicodeDecodeError`) y `csv.Error` => `GastoError` claro. Toda la lectura/validación termina antes de tocar gastos.json.
+    - `service.importar(ruta, origen) -> tuple[int, Decimal]`: `leer_csv` → `storage.cargar` (JSON corrupto => error, archivo intacto) → `extend` al final → `storage.guardar` (atómico) solo si hay ≥1 gasto y todo fue válido. Con 0 filas no escribe ni crea gastos.json. Sin detección de duplicados (importar dos veces duplica).
+    - `cli.py`: subparser `importar` con `archivo`; salida `Importados N gastos, total: X.XX` (stdout, código 0); errores por `GastoError` → stderr, código 1.
+    - Ciclo exportar→importar: el formato lo escribe `exporter` (csv.writer, utf-8), `csv.reader` lo lee tal cual (comas/comillas en notas).
+    - Rendimiento: una pasada, una sola carga y un solo guardado; 10 000 filas << 1 s.
+    - Docs: README (Uso, advertencia de duplicados, garantías) y CHANGELOG en `[Sin publicar]`, sin tocar 0.1.0.
+
 ## Pruebas
+Para `importar`: nuevo `tests/test_importar.py` (válida con total, previos conservados y nuevos al final, nota con comas/comillas, solo cabecera, fila inválida con número y bytes intactos, montos 0/-5/abc/1.234, categoría vacía, 5 válidas+1 inválida sin crear archivo, primera de varias inválidas, CSV inexistente, cabecera incorrecta/vacía, ilegible (directorio, no UTF-8), columnas ≠ 4, CSV intacto, JSON corrupto, GASTOS_FILE, creación, doble importación = 4, ciclo exportar→importar, rendimiento 10 000 filas).
 pytest, ejecuta `main([...])` directamente con `capsys`; fixtures con tmp_path (ausente, válido, corrupto, vacío). Unitarias del dominio (montos, fechas, mes, categoría) + integración por comando, verificando código 1 y bytes intactos. Un test de rendimiento con 10 000 gastos.
 Para `categorias`: nuevo `tests/test_categorias.py` (orden, empates, Comida/COMIDA, total, mes vacío, mes inválido, `--foo`, archivo ausente no creado, bytes idénticos, JSON corrupto); los tests existentes no se tocan.
 Para `listar`: nuevo `tests/test_listar.py` (orden por fecha, mismo día en orden de registro, pie con cantidad y total, filtro categoría e insensibilidad a mayúsculas, ambos filtros, mes vacío, categoría sin coincidencias, mes inválido, `--foo`, archivo ausente no creado, bytes idénticos, JSON corrupto).

@@ -14,6 +14,8 @@ Herramienta de línea de comandos en Python 3.11, solo biblioteca estándar. Per
 
 - `listar`: línea por gasto `AAAA-MM-DD categoria monto nota` (separados por espacio, monto con dos decimales, nota al final y vacía si no hay); pie `N gastos` y `total: 0.00` (formato igual a `resumen`); orden por fecha ascendente, empate por orden de registro; mes sin gastos (o filtro sin coincidencias) imprime `No hay gastos en AAAA-MM` con código 0, como `categorias`. El formato exacto del pie lo fija el Arquitecto/Desarrollador siguiendo el estilo existente.
 
+- `importar`: lectura UTF-8 con módulo csv; las filas se numeran desde 1 sin contar la cabecera; filas con columnas distintas de 4 son inválidas; las mismas reglas de validación que `registrar`; se valida todo antes de escribir (todo o nada); salida de éxito `Importados N gastos, total: 0.00` (el texto exacto lo fija el Desarrollador siguiendo el estilo existente).
+
 ## Historias
 
 ### US-01 Registrar un gasto (must, 3 pts)
@@ -117,6 +119,47 @@ Como usuario y como equipo quiero README y CHANGELOG actualizados y pruebas pyte
 - Given el CHANGELOG, When se revisa, Then la entrada de `listar` está en la sección `[Sin publicar]` junto a la de `categorias` y la versión `0.1.0` no cambia.
 - Given la suite, When ejecuto `pytest`, Then hay pruebas de orden por fecha, pie con cantidad y total, filtro de categoría, mes vacío, mes inválido, sin crear archivo, sin modificar datos y JSON corrupto, y las pruebas existentes siguen pasando sin modificarse.
 
+### US-17 Importar gastos desde un CSV (must, 3 pts)
+Como persona que controla sus finanzas quiero `gastos importar archivo.csv` para cargar de una vez gastos exportados o preparados en una hoja de cálculo, sin registrarlos uno a uno.
+- Given un CSV con cabecera `fecha,categoria,monto,nota` y filas 2026-11-03,Comida,10,"" y 2026-11-10,transporte,3.5,taxi, When ejecuto `gastos importar archivo.csv`, Then ambos gastos se agregan a gastos.json (monto "10.00" y "3.50", categorías en minúsculas), se imprime cuántos se importaron y su total (2 gastos, 13.50) y el código es 0.
+- Given un gastos.json con gastos previos, When importo un CSV válido, Then los gastos previos se conservan y los nuevos se agregan al final.
+- Given una nota con comas y comillas (`"almuerzo, ""menú"" del día"`), When importo, Then la nota se guarda tal cual: `almuerzo, "menú" del día`.
+- Given un CSV con solo la cabecera, When importo, Then se importan cero gastos, se informa 0 gastos con total 0.00 y el código es 0.
+
+### US-18 Importación todo o nada con validación por fila (must, 3 pts)
+Como usuario quiero que una fila inválida cancele toda la importación para no quedarme con datos a medias que no sé cómo deshacer.
+- Given un CSV cuya fila 3 tiene fecha `2026-13-40`, When importo, Then se muestra en stderr un mensaje con el número de fila (3) y el motivo, el código es 1 y gastos.json queda byte a byte igual.
+- Given filas con monto `0`, `-5`, `abc` o `1.234` (más de dos decimales), When importo, Then se aplican las mismas reglas y mensajes de monto que `registrar` (Decimal, mayor que cero, dos decimales), código 1 y sin cambios en gastos.json.
+- Given una fila con categoría vacía o solo espacios, When importo, Then se rechaza con el número de fila y el motivo, código 1 y sin cambios.
+- Given un CSV con 5 filas válidas y la sexta inválida, When importo, Then no se importa ninguna y gastos.json no se crea si no existía.
+- Given varias filas inválidas, When importo, Then se informa la primera inválida (número de fila contado sin la cabecera: la primera fila de datos es la fila 1).
+
+### US-19 Errores del archivo CSV de entrada (must, 2 pts)
+Como usuario quiero mensajes claros cuando el CSV no sirve y la garantía de que mi CSV no se toca, para corregir el problema sin perder nada.
+- Given un CSV que no existe, When ejecuto `gastos importar no_existe.csv`, Then mensaje claro en stderr, código 1 y gastos.json sin cambios (no se crea).
+- Given un CSV cuya cabecera no es `fecha,categoria,monto,nota` (p. ej. falta `nota` o está vacío), When importo, Then mensaje claro, código 1 y gastos.json sin cambios.
+- Given un CSV que no se puede leer (es un directorio, sin permiso o no es UTF-8), When importo, Then mensaje claro, código 1 y gastos.json sin cambios.
+- Given cualquier importación (éxito o error), When termina, Then el CSV de entrada queda byte a byte idéntico.
+- Given una fila con un número de columnas distinto de 4, When importo, Then se rechaza con el número de fila y el motivo, código 1.
+
+### US-20 `importar` con el mismo manejo de gastos.json que `registrar` (must, 2 pts)
+Como usuario quiero que `importar` cree, respete y proteja gastos.json igual que `registrar` para no perder datos.
+- Given que gastos.json no existe, When importo un CSV válido, Then se crea con los gastos importados y código 0.
+- Given la variable GASTOS_FILE apuntando a otra ruta, When importo, Then se escribe en esa ruta y no en la de la carpeta actual.
+- Given un gastos.json con JSON corrupto, When importo (incluso un CSV válido), Then error en stderr, código 1 y el archivo queda byte a byte intacto.
+- Given una importación válida, When se escribe gastos.json, Then la escritura es atómica (archivo temporal + reemplazo), como en `registrar`.
+
+### US-21 Importar dos veces y ciclo exportar-importar (should, 2 pts)
+Como usuario quiero saber qué pasa al repetir una importación y poder mover mis datos con `exportar` e `importar` para respaldarlos y restaurarlos.
+- Given un CSV válido de 2 gastos, When lo importo dos veces, Then gastos.json contiene 4 gastos (no se detectan duplicados) y ambos comandos terminan con código 0.
+- Given gastos registrados en un mes y un CSV creado con `gastos exportar salida.csv --mes 2026-11`, When importo salida.csv sobre un gastos.json vacío, Then quedan los mismos gastos (fecha, categoría, monto y nota, incluidas notas con comas y comillas).
+
+### US-22 Documentar `importar` y probarlo (should, 2 pts)
+Como usuario y como equipo quiero README, CHANGELOG y pruebas pytest para descubrir el comando y evitar regresiones.
+- Given el README, When se revisa, Then la sección Uso incluye `gastos importar archivo.csv`, advierte que importar dos veces el mismo archivo duplica los gastos y la lista de garantías menciona `importar`.
+- Given el CHANGELOG, When se revisa, Then la entrada de `importar` está en `[Sin publicar]` junto a las de `categorias` y `listar` y la versión `0.1.0` no cambia.
+- Given la suite, When ejecuto `pytest`, Then hay pruebas de importación válida, solo cabecera, todo o nada con número de fila, CSV inexistente, cabecera incorrecta, CSV no legible, CSV intacto, JSON corrupto, GASTOS_FILE, duplicación y ciclo exportar-importar, y las pruebas existentes siguen pasando sin modificarse.
+
 ## No funcionales
 - Python 3.11, solo biblioteca estándar (pytest solo para pruebas).
 - Decimal para dinero; nunca float.
@@ -125,4 +168,5 @@ Como usuario y como equipo quiero README y CHANGELOG actualizados y pruebas pyte
 - Ejecución en menos de 1 s con hasta 10 000 gastos.
 
 ## Fuera de alcance
-- Editar o borrar gastos, múltiples monedas, sincronización, interfaz gráfica, presupuestos, importar CSV, cifrado.
+- Editar o borrar gastos, múltiples monedas, sincronización, interfaz gráfica, presupuestos, cifrado.
+- `importar`: detección de duplicados, importación parcial, otros formatos que no sean el CSV de `exportar`.
