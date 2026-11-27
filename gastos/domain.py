@@ -73,3 +73,8 @@ def totales_por_categoria(gastos) -> dict[str, Decimal]:
     for g in gastos:
         t[g.categoria] = t.get(g.categoria, Decimal("0.00")) + g.monto
     return t
+
+
+def ordenar_categorias(totales) -> list[tuple[str, Decimal]]:
+    """Total descendente; nombre ascendente en empates."""
+    return sorted(totales.items(), key=lambda kv: (-kv[1], kv[0]))

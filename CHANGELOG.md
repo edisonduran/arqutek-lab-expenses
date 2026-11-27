@@ -1,5 +1,10 @@
 # Changelog
 
+## [Sin publicar]
+
+### Añadido
+- US-08..US-10 Comando `gastos categorias [--mes AAAA-MM]`: categorías del mes ordenadas por total descendente (empates por nombre), con total; mes vacío imprime `No hay gastos en AAAA-MM` (código 0); solo lectura, no crea `gastos.json`.
+
 ## [0.1.0] - 2026-11-07
 
 ### Añadido
