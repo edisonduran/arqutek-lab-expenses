@@ -78,3 +78,13 @@ def totales_por_categoria(gastos) -> dict[str, Decimal]:
 def ordenar_categorias(totales) -> list[tuple[str, Decimal]]:
     """Total descendente; nombre ascendente en empates."""
     return sorted(totales.items(), key=lambda kv: (-kv[1], kv[0]))
+
+
+def ordenar_por_fecha(gastos) -> list[Gasto]:
+    """Por fecha ascendente; estable (mismo día conserva el orden de registro)."""
+    return sorted(gastos, key=lambda g: g.fecha)
+
+
+def filtrar_categoria(gastos, categoria: str) -> list[Gasto]:
+    c = str(categoria).strip().lower()
+    return [g for g in gastos if g.categoria.strip().lower() == c]
