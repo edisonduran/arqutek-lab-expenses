@@ -53,3 +53,13 @@ def categorias(ruta, mes=None, hoy=None):
         c = g.categoria.strip().lower()
         t[c] = t.get(c, Decimal("0.00")) + g.monto
     return domain.ordenar_categorias(t), sum(t.values(), Decimal("0.00")), (a, m)
+
+
+def listar(ruta, mes=None, categoria=None, hoy=None):
+    """Devuelve (gastos ordenados, total, (año, mes)); solo lectura."""
+    a, m = _mes(mes, hoy)
+    sel = domain.filtrar_mes(storage.cargar(ruta), a, m)
+    if categoria is not None:
+        sel = domain.filtrar_categoria(sel, categoria)
+    sel = domain.ordenar_por_fecha(sel)
+    return sel, sum((g.monto for g in sel), Decimal("0.00")), (a, m)
