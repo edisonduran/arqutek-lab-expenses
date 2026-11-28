@@ -88,3 +88,13 @@ def ordenar_por_fecha(gastos) -> list[Gasto]:
 def filtrar_categoria(gastos, categoria: str) -> list[Gasto]:
     c = str(categoria).strip().lower()
     return [g for g in gastos if g.categoria.strip().lower() == c]
+
+
+def agrupar_por_mes(gastos):
+    """Agrupa por AAAA-MM: lista (mes, cantidad, total) en orden cronológico."""
+    acc = {}
+    for g in gastos:
+        k = f"{g.fecha.year:04d}-{g.fecha.month:02d}"
+        n, t = acc.get(k, (0, Decimal("0.00")))
+        acc[k] = (n + 1, t + g.monto)
+    return [(k, acc[k][0], acc[k][1]) for k in sorted(acc)]

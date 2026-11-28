@@ -23,13 +23,15 @@ gastos categorias --mes 2026-10
 gastos listar                                         # gastos del mes por fecha
 gastos listar --mes 2026-10
 gastos listar --categoria comida
+gastos meses                                          # meses con gastos
+gastos meses --categoria comida
 gastos exportar salida.csv --mes 2026-10              # CSV: fecha,categoria,monto,nota
 ```
 
 - Montos con Decimal y dos decimales (ROUND_HALF_UP); deben ser > 0.
 - Las categorías se guardan en minúsculas.
 - Errores: mensaje en stderr y código de salida 1; éxito: 0.
-- `resumen`, `categorias`, `listar` y `exportar` no crean `gastos.json` si no existe.
+- `resumen`, `categorias`, `listar`, `meses` y `exportar` no crean `gastos.json` si no existe.
 - Un `gastos.json` corrupto o vacío nunca se sobrescribe.
 
 ## Datos
