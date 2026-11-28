@@ -7,7 +7,7 @@
 | Ruta | Responsabilidad |
 |---|---|
 | `gastos/domain.py` | Dominio puro: Gasto, validaciones, totales (Decimal) |
-| `gastos/service.py` | Casos de uso: registrar, resumen, exportar, categorias, listar |
+| `gastos/service.py` | Casos de uso: registrar, resumen, exportar, categorias, listar, meses |
 | `gastos/storage.py` | Lectura/escritura atómica de gastos.json |
 | `gastos/exporter.py` | Escritura CSV |
 | `gastos/cli.py`, `__main__.py` | Interfaz argparse, stderr, códigos de salida |
@@ -38,11 +38,19 @@ Dependencias: cli → service → (domain, storage, exporter); domain no depende
     - `cli.py`: subparser `listar` con `--mes` y `--categoria`. Línea por gasto: `AAAA-MM-DD categoria monto.XX nota` separado por un espacio (sin espacio final si la nota es vacía). Pie: `N gastos, total: X.XX`. Sin resultados (mes o categoría) => stdout `No hay gastos en AAAA-MM`, sin pie, código 0.
     - Errores (mes inválido con el mismo mensaje de `resumen`, JSON corrupto, uso/`--foo`) por `GastoError` → stderr, código 1. Archivo ausente: no se crea.
     - Docs: README (Uso y garantías) y CHANGELOG en `[Sin publicar]`, sin tocar 0.1.0.
+12. **Comando `meses [--categoria NOMBRE]`** (US-17..21): solo lectura, sin módulos nuevos ni cambios en el formato de gastos.json.
+    - `domain.agrupar_por_mes(gastos) -> list[tuple[str, int, Decimal]]`: puro; agrupa por `AAAA-MM` (`f"{fecha.year:04d}-{fecha.month:02d}"`), devuelve (mes, cantidad, total) ordenado cronológicamente (orden por la cadena AAAA-MM equivale al cronológico). Solo meses con gastos.
+    - `service.meses(ruta, categoria=None) -> tuple[list[tuple[str, int, Decimal]], Decimal]`: `storage.cargar`, `domain.filtrar_categoria` si hay categoría (Comida == COMIDA), `agrupar_por_mes`; total general con `Decimal`. No usa `storage.guardar`; archivo ausente => [] sin crear nada.
+    - `cli.py`: subparser `meses` solo con `--categoria` (`--mes` y `--foo` => error de uso, código 1 vía `_Parser`). Línea por mes: `AAAA-MM: N gastos, total: X.XX` y última línea `total: X.XX`. Sin resultados (sin gastos, sin archivo o categoría sin coincidencias) => stdout `No hay gastos`, sin meses ni total, código 0.
+    - Errores (JSON corrupto, uso) por `GastoError` → stderr, código 1; el archivo queda intacto.
+    - Rendimiento: una carga y una pasada con dict; 10 000 gastos << 1 s.
+    - Docs: README (Uso: `gastos meses`, `gastos meses --categoria comida`; garantías de solo lectura mencionan `meses`) y CHANGELOG en `[Sin publicar]`, sin tocar 0.1.0.
 
 ## Pruebas
 pytest, ejecuta `main([...])` directamente con `capsys`; fixtures con tmp_path (ausente, válido, corrupto, vacío). Unitarias del dominio (montos, fechas, mes, categoría) + integración por comando, verificando código 1 y bytes intactos. Un test de rendimiento con 10 000 gastos.
 Para `categorias`: nuevo `tests/test_categorias.py` (orden, empates, Comida/COMIDA, total, mes vacío, mes inválido, `--foo`, archivo ausente no creado, bytes idénticos, JSON corrupto); los tests existentes no se tocan.
 Para `listar`: nuevo `tests/test_listar.py` (orden por fecha, mismo día en orden de registro, pie con cantidad y total, filtro categoría e insensibilidad a mayúsculas, ambos filtros, mes vacío, categoría sin coincidencias, mes inválido, `--foo`, archivo ausente no creado, bytes idénticos, JSON corrupto).
+Para `meses`: nuevo `tests/test_meses.py` (orden cronológico incl. 2025-12 < 2026-01, cantidad y total por mes, total general, mes intermedio sin gastos ausente, filtro categoría e insensibilidad a mayúsculas, categoría en un solo mes, sin gastos/archivo ausente/sin coincidencias => `No hay gastos`, `--foo` y `--mes`, archivo no creado, bytes idénticos, JSON corrupto). QA lo escribe; los tests existentes no se tocan.
 
 ## Ejecución
 `python -m gastos registrar 12.50 comida` · tests: `python -m pytest`

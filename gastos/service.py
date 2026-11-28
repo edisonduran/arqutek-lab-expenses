@@ -63,3 +63,12 @@ def listar(ruta, mes=None, categoria=None, hoy=None):
         sel = domain.filtrar_categoria(sel, categoria)
     sel = domain.ordenar_por_fecha(sel)
     return sel, sum((g.monto for g in sel), Decimal("0.00")), (a, m)
+
+
+def meses(ruta, categoria=None):
+    """Devuelve (lista (mes, cantidad, total), total general); solo lectura."""
+    sel = storage.cargar(ruta)
+    if categoria is not None:
+        sel = domain.filtrar_categoria(sel, categoria)
+    lista = domain.agrupar_por_mes(sel)
+    return lista, sum((t for _, _, t in lista), Decimal("0.00"))

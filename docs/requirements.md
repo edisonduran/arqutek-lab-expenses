@@ -13,6 +13,7 @@ Herramienta de línea de comandos en Python 3.11, solo biblioteca estándar. Per
 - `categorias`: formato de línea `categoria: 0.00` y `total: 0.00` (igual que `resumen`); orden por total descendente, empate por nombre ascendente; mes vacío imprime `No hay gastos en AAAA-MM` en stdout con código 0 (a diferencia de `resumen`, que imprime total 0.00).
 
 - `listar`: línea por gasto `AAAA-MM-DD categoria monto nota` (separados por espacio, monto con dos decimales, nota al final y vacía si no hay); pie `N gastos` y `total: 0.00` (formato igual a `resumen`); orden por fecha ascendente, empate por orden de registro; mes sin gastos (o filtro sin coincidencias) imprime `No hay gastos en AAAA-MM` con código 0, como `categorias`. El formato exacto del pie lo fija el Arquitecto/Desarrollador siguiendo el estilo existente.
+- `meses`: línea por mes `AAAA-MM: N gastos, total: 0.00` (mismo estilo que el pie de `listar`, "gastos" también si N=1) y última línea `total: 0.00` con el total general; orden cronológico ascendente; solo meses con gastos, sobre todos los años; sin `--mes` (argumento desconocido, error de uso); sin gastos o filtro sin coincidencias imprime `No hay gastos` (sin mes, porque abarca todos) con código 0.
 
 ## Historias
 
@@ -116,6 +117,37 @@ Como usuario y como equipo quiero README y CHANGELOG actualizados y pruebas pyte
 - Given el README, When se revisa, Then la sección Uso incluye `gastos listar`, `gastos listar --mes 2026-10` y `gastos listar --categoria comida`, y la lista de garantías menciona `listar` junto a `resumen`, `categorias` y `exportar`.
 - Given el CHANGELOG, When se revisa, Then la entrada de `listar` está en la sección `[Sin publicar]` junto a la de `categorias` y la versión `0.1.0` no cambia.
 - Given la suite, When ejecuto `pytest`, Then hay pruebas de orden por fecha, pie con cantidad y total, filtro de categoría, mes vacío, mes inválido, sin crear archivo, sin modificar datos y JSON corrupto, y las pruebas existentes siguen pasando sin modificarse.
+
+### US-17 Listar los meses con gastos (must, 3 pts)
+Como persona que controla sus finanzas quiero `gastos meses` para ver de un vistazo qué meses tienen gastos, cuántos y cuánto sumaron, y saber qué mes consultar con `resumen` o `listar`.
+- Given gastos en 2026-11 (10.00 y 5.50), 2026-09 (20.00) y 2026-10 (3.50), When ejecuto `gastos meses`, Then imprime una línea por mes, del más antiguo al más reciente: `2026-09: 1 gastos, total: 20.00`, `2026-10: 1 gastos, total: 3.50`, `2026-11: 2 gastos, total: 15.50`, y el código es 0.
+- Given los mismos gastos, When termina el listado, Then la última línea es el total general `total: 39.00`.
+- Given gastos de diciembre 2025 y enero 2026, When ejecuto el comando, Then el orden es cronológico por año y mes (2025-12 antes que 2026-01), no alfabético por nombre.
+- Given un mes sin ningún gasto entre dos meses con gastos, When ejecuto el comando, Then ese mes no aparece.
+
+### US-18 Filtrar `meses` por categoría (must, 2 pts)
+Como usuario quiero `gastos meses --categoria NOMBRE` para ver mes a mes cuánto gasto en una categoría.
+- Given gastos de "comida" y "ocio" en 2026-10 y 2026-11, When ejecuto `gastos meses --categoria comida`, Then solo se cuentan y suman los de comida en cada mes, y el total general es el de esa categoría.
+- Given gastos registrados como "Comida", When ejecuto `gastos meses --categoria COMIDA`, Then se incluyen (sin distinción de mayúsculas, igual que al registrar).
+- Given una categoría que existe solo en 2026-10, When ejecuto el comando con ella, Then solo aparece 2026-10.
+
+### US-19 Sin gastos y errores en `meses` (must, 2 pts)
+Como usuario quiero que `meses` avise claramente cuando no hay gastos que mostrar o la entrada es inválida, con el mismo estilo que `listar`, para no confundir la ausencia de datos con un fallo.
+- Given que no hay gastos (o gastos.json no existe), When ejecuto `gastos meses`, Then se imprime en stdout `No hay gastos`, sin líneas de meses ni total, y el código es 0.
+- Given un filtro `--categoria viajes` sin coincidencias, When ejecuto `gastos meses --categoria viajes`, Then se imprime `No hay gastos` y el código es 0.
+- Given un argumento desconocido (`gastos meses --foo`) o `--mes 2026-10` (no admitido), When ejecuto, Then error de uso en stderr y código 1.
+
+### US-20 `meses` es de solo lectura y robusto (must, 2 pts)
+Como usuario quiero que `meses` nunca cambie ni cree mis datos y respete archivos dañados, para no perder información.
+- Given que gastos.json no existe, When ejecuto `gastos meses`, Then termina con código 0 y gastos.json sigue sin existir.
+- Given un gastos.json válido, When ejecuto `gastos meses`, Then el archivo queda byte a byte idéntico.
+- Given un gastos.json con JSON corrupto, When ejecuto `gastos meses`, Then se informa el error en stderr, código 1 y el archivo queda byte a byte intacto.
+
+### US-21 Documentar `meses` y probarlo (should, 2 pts)
+Como usuario y como equipo quiero README y CHANGELOG actualizados y pruebas pytest del comando para descubrirlo y evitar regresiones.
+- Given el README, When se revisa, Then la sección Uso incluye `gastos meses` y `gastos meses --categoria comida`, y la lista de garantías menciona `meses` junto a `resumen`, `categorias`, `listar` y `exportar`.
+- Given el CHANGELOG, When se revisa, Then la entrada de `meses` está en `[Sin publicar]` y la versión `0.1.0` no cambia.
+- Given la suite, When ejecuto `pytest`, Then hay pruebas de orden cronológico, cantidad y total por mes, total general, filtro de categoría, sin gastos, argumento inválido, sin crear archivo, sin modificar datos y JSON corrupto, y las pruebas existentes siguen pasando sin modificarse.
 
 ## No funcionales
 - Python 3.11, solo biblioteca estándar (pytest solo para pruebas).
